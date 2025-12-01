@@ -1,0 +1,35 @@
+﻿services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: secretsanta-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./SecretSantaBot/Scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  secretsantabot:
+    image: secretsantabot
+    build:
+      context: .
+      dockerfile: SecretSantaBot/Dockerfile
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=SecretSanta;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+    env_file:
+      - .env
+
+volumes:
+  sqlserver_data:
+
